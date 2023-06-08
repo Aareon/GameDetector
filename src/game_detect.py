@@ -302,7 +302,6 @@ def main() -> None:
     game_appid = None
     game_version = None
     game_name = None
-    game_publisher = None
 
     # Open a folder select dialog and return Steam appid if game is detected.
     game_folder = Path(filedialog.askdirectory())
@@ -319,7 +318,7 @@ def main() -> None:
         game_appid = check_appid_txt(game_folder)
         if game_appid is None:
             # Check for `app.info`
-            game_publisher, game_name = check_app_info(game_folder)
+            _, game_name = check_app_info(game_folder)
             if game_name is not None:
                 game_appid = get_appid_from_name(game_name, app_list)
                 print(f"Found `app.info` - AppId: {game_appid}")
