@@ -138,7 +138,7 @@ def get_game_version(game_folder: Path, delimiter: str = ".") -> str | None:
         if fp.name.endswith("version.txt") or fp.name.endswith("version"):
             print(f"Found version file: `{fp}`")
             with open(fp) as f:
-                game_version = f.read().strip()
+                game_version = f.readline().strip()
                 break
 
     return game_version
