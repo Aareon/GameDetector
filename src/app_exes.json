@@ -71,6 +71,18 @@
         {
             "filename": "rmid.exe",
             "description": "Java utility"
+        },
+        {
+            "filename": "CEFProcess.exe",
+            "description": "Utility used by Stellaris"
+        },
+        {
+            "filename": "unpack200.exe",
+            "description": "Unpack utility for Java applications"
+        },
+        {
+            "filename": "pack200.exe",
+            "description": "Pack utility for Java applications"
         }
     ],
     "fuzz": [
@@ -93,6 +105,7 @@
         "cache",
         "editor",
         "switcher",
-        "server"
+        "server",
+        "jjs"
     ]
 }
