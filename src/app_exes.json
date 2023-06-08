@@ -63,6 +63,14 @@
         {
             "filename": "QuickSFV.EXE",
             "description": "Redistributable"
+        },
+        {
+            "filename": "Restarter.exe",
+            "description": "Game restart utility for Oxygen Not Included"
+        },
+        {
+            "filename": "rmid.exe",
+            "description": "Java utility"
         }
     ],
     "fuzz": [
@@ -73,7 +81,6 @@
         "crashpad_handler",
         "klist",
         "ktab",
-        "rmid",
         "rmiregistry",
         "keytool",
         "jrunscript",
@@ -85,6 +92,7 @@
         "jaotc",
         "cache",
         "editor",
-        "switcher"
+        "switcher",
+        "server"
     ]
 }
