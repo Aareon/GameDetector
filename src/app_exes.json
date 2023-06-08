@@ -13,22 +13,6 @@
             "description": "DirectX Setup Redistributable"
         },
         {
-            "filename": "vcredist_x86.exe",
-            "description": "Visual C++ 32-bit Redistributable"
-        },
-        {
-            "filename": "VC_redist.x86.exe",
-            "description": "Visual C++ 32-bit Redistributable"
-        },
-        {
-            "filename": "VC_redist.x64.exe",
-            "description": "Visual C++ 64-bit Redistributable"
-        },
-        {
-            "filename": "vcredist_x64.exe",
-            "description": "Visual C++ 64-bit Redistributable"
-        },
-        {
             "filename": "ZFGameBrowser.exe",
             "description": "Surveys, notices, info, feedback, and customer services."
         },
@@ -63,6 +47,20 @@
         {
             "filename": "UnityCrashHandler64.exe",
             "description": "Unity Crash Handler"
+        },
+        {
+            "filename": "LanguageSetup.exe",
+            "description": "Language(s) Setup"
+        },
+        {
+            "filename": "dowser.exe",
+            "description": "Web-crawler used by Paradox Interactive and others."
         }
+    ],
+    "fuzz": [
+        "vcredist",
+        "uninstall",
+        "setup",
+        "crashreport"
     ]
 }

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog
 from typing import List
+import fuzzysearch as fuzz
 
 import ratelimit
 import requests
@@ -211,11 +212,22 @@ def get_game_name(
 
 
 def get_game_executables(game_folder: Path) -> List[Path] | List:
-    # Get game executables
+    """Get game executables in folder"""
+    # TODO fuzzy search known redists (ie. vc_redist) and remove from list
     with open(Path(__file__).parent / "app_exes.json") as f:
-        ignore = [a["filename"].lower() for a in json.load(f)["exes"]]
-    print(f"Ignoring: {ignore}")
-    exes = [e for e in game_folder.glob("**/*.exe") if e.name.lower() not in ignore]
+        fj = json.load(f)
+        ignore = [a["filename"].lower() for a in fj["exes"]]
+        fuzzers = fj["fuzz"]
+
+    exes = []
+    for e in game_folder.glob("**/*.exe"):
+        for z in fuzzers:
+            m = fuzz.find_near_matches(z, e.name.lower(), max_l_dist=1)
+            if m:
+                print(f"Matched on: `{e.name.lower()}`")
+                ignore.append(e.name.lower())
+        if e.name.lower() not in ignore:
+            exes.append(e)
     return exes
 
 
