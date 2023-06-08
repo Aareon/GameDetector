@@ -134,8 +134,9 @@ def get_game_version(game_folder: Path, delimiter: str = ".") -> str | None:
             game_version = ".".join(name_and_soft_ver[i:])
             return game_version
 
-    for fp in game_folder.glob("**/*.txt"):
-        if fp.name.endswith("version.txt"):
+    for fp in game_folder.glob("**/version"):
+        if fp.name.endswith("version.txt") or fp.name.endswith("version"):
+            print(f"Found version file: `{fp}`")
             with open(fp) as f:
                 game_version = f.read().strip()
                 break
@@ -224,7 +225,7 @@ def get_game_executables(game_folder: Path) -> List[Path] | List:
         for z in fuzzers:
             m = fuzz.find_near_matches(z, e.name.lower(), max_l_dist=1)
             if m:
-                print(f"Matched on: `{e.name.lower()}`")
+                print(f"Fuzzy matched on: `{e.name.lower()}`")
                 ignore.append(e.name.lower())
         if e.name.lower() not in ignore:
             exes.append(e)
