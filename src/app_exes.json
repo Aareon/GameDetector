@@ -55,6 +55,14 @@
         {
             "filename": "java.exe",
             "description": "Java Runtime"
+        },
+        {
+            "filename": "BlizzardError.exe",
+            "description": "Crash Handler for Blizzard games"
+        },
+        {
+            "filename": "QuickSFV.EXE",
+            "description": "Redistributable"
         }
     ],
     "fuzz": [
@@ -74,6 +82,7 @@
         "java",
         "jaccess",
         "jabswitch",
-        "jaotc"
+        "jaotc",
+        "cache"
     ]
 }
