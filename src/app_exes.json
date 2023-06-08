@@ -1,0 +1,68 @@
+{
+    "exes": [
+        {
+            "filename": "BsSndRpt64.exe",
+            "description": "Bug Splat Crash Report Utility"
+        },
+        {
+            "filename": "dxwebsetup.exe",
+            "description": "DirectX Web Setup Redistributable"
+        },
+        {
+            "filename": "DXSETUP.exe",
+            "description": "DirectX Setup Redistributable"
+        },
+        {
+            "filename": "vcredist_x86.exe",
+            "description": "Visual C++ 32-bit Redistributable"
+        },
+        {
+            "filename": "VC_redist.x86.exe",
+            "description": "Visual C++ 32-bit Redistributable"
+        },
+        {
+            "filename": "VC_redist.x64.exe",
+            "description": "Visual C++ 64-bit Redistributable"
+        },
+        {
+            "filename": "vcredist_x64.exe",
+            "description": "Visual C++ 64-bit Redistributable"
+        },
+        {
+            "filename": "ZFGameBrowser.exe",
+            "description": "Surveys, notices, info, feedback, and customer services."
+        },
+        {
+            "filename": "oalinst.exe",
+            "description": "OpenAL Setup Redistributable"
+        },
+        {
+            "filename": "UE4PrereqSetup_x64.exe",
+            "description": "Unreal Engine 4 Prerequisites Setup"
+        },
+        {
+            "filename": "UNINSTALL.exe",
+            "description": "Uninstaller"
+        },
+        {
+            "filename": "CrashReportClient.exe",
+            "description": "Unreal Engine 4 Crash Report Client"
+        },
+        {
+            "filename": "unins000.exe",
+            "description": "Uninstaller"
+        },
+        {
+            "filename": "gamelaunchhelper.exe",
+            "description": "Microsoft Game Launch Helper"
+        },
+        {
+            "filename": "crashpad_handler.exe",
+            "description": "Google Crashpad Handler"
+        },
+        {
+            "filename": "UnityCrashHandler64.exe",
+            "description": "Unity Crash Handler"
+        }
+    ]
+}
