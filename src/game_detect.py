@@ -302,11 +302,11 @@ def main() -> None:
         desc = get_app_description(game_appid)
         print(f"Game description: {desc}")
 
-        possible_exes = get_game_executables(game_folder)
-        if len(possible_exes) > 0:
-            print(possible_exes)
-        else:
-            print("\nNo EXE detected. Are you sure this folder contains a game?")
+    possible_exes = get_game_executables(game_folder)
+    if len(possible_exes) > 0:
+        print(possible_exes)
+    else:
+        print("\nNo EXE detected. Are you sure this folder contains a game?")
 
 
 if __name__ == "__main__":
