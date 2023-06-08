@@ -24,6 +24,30 @@ try:
 except ImportError:
     import json
 
+try:
+    from win32api import GetFileVersionInfo, LOWORD, HIWORD, error as win32error
+    from win32com.client import Dispatch
+
+    _using_win32 = True
+
+    def get_version_number(app_path: Path):
+        app_path = str(app_path.resolve())
+        try:
+            info = GetFileVersionInfo(app_path, "\\")
+            ms = info["FileVersionMS"]
+            ls = info["FileVersionLS"]
+            return f"{HIWORD(ms)}.{LOWORD(ms)}.{HIWORD(ls)}.{LOWORD(ls)}"
+        except win32error:
+            parser = Dispatch("Scripting.FileSystemObject")
+            version = parser.GetFileVersion(app_path) or None
+            return version
+
+except ImportError:
+    _using_win32 = False
+
+    def get_version_number(app_path: Path):
+        pass
+
 # Useful files to look for
 # steam_emu.ini (INI)
 # MicrosoftGame.Config (XML)
@@ -117,29 +141,37 @@ def steam_game_from_appid(game_appid: int, app_list: dict = {}) -> SteamGame:
             return SteamGame(name=game_name, appid=game_appid)
 
 
-def get_game_version(game_folder: Path, delimiter: str = ".") -> str | None:
+def get_game_version(game_folder: Path, delimiter: str = ".", is_folder=True) -> str | None:
     """Get game version from version identifier in folder name"""
+    game_version = None
 
     # to disclude game iterations, get software version if available
-    name_and_soft_ver = game_folder.name.split(delimiter)
+    if is_folder:
+        name_and_soft_ver = game_folder.name.split(delimiter)
 
-    # software version may have been split
-    # check if an item in `name_and_soft_ver` is equivalent to `v#+` where # is a number
-    # this is done to create a full software version
-    game_version = None
-    for i, e in enumerate(name_and_soft_ver):
-        m = re.match("(v[0-9]+)", e)
-        if m is not None:
-            print(f"Matched version segment: {m}")
-            game_version = ".".join(name_and_soft_ver[i:])
-            return game_version
+        # software version may have been split
+        # check if an item in `name_and_soft_ver` is equivalent to `v#+` where # is a number
+        # this is done to create a full software version
+        for i, e in enumerate(name_and_soft_ver):
+            m = re.match("(?i)(v[0-9]+)", e)  # case insensitive
+            if m is not None:
+                print(f"Matched version segment: {m}")
+                game_version = ".".join(name_and_soft_ver[i:])
+                return game_version
 
-    for fp in game_folder.glob("**/version"):
-        if fp.name.endswith("version.txt") or fp.name.endswith("version"):
-            print(f"Found version file: `{fp}`")
-            with open(fp) as f:
-                game_version = f.readline().strip()
-                break
+        for fp in game_folder.glob("**/version"):
+            if fp.name.endswith("version.txt") or fp.name.endswith("version"):
+                print(f"Found version file: `{fp}`")
+                with open(fp) as f:
+                    game_version = f.readline().strip()
+                    break
+    else:  # check application version in binary name
+        print(f"Checking application version for `{game_folder.name}`")
+        comp = game_folder.name.split(" ")
+        for c in comp:
+            m = re.match("([vV][0-9]+)", c)
+            if m:
+                game_version = c
 
     return game_version
 
@@ -225,7 +257,7 @@ def get_game_executables(game_folder: Path) -> List[Path] | List:
         for z in fuzzers:
             m = fuzz.find_near_matches(z, e.name.lower(), max_l_dist=1)
             if m:
-                print(f"Fuzzy matched on: `{e.name.lower()}`")
+                print(f"Fuzzy matched on: `{e.name.lower()}`, fuzzer: `{z}`")
                 ignore.append(e.name.lower())
         if e.name.lower() not in ignore:
             exes.append(e)
@@ -241,6 +273,17 @@ def get_appid_from_name(game_name: str, app_list: dict = {}) -> int | None:
         if game["name"] == game_name:
             game_appid = game["appid"]
             return game_appid
+
+
+def get_name_from_appid(appid: int, app_list: dict = {}) -> str:
+    if app_list == {}:
+        # download app_list
+        app_list = get_app_list()
+
+    for game in app_list["applist"]["apps"]:
+        if game["appid"] == appid:
+            game_name = game["name"]
+            return game_name
 
 
 def main() -> None:
@@ -286,7 +329,6 @@ def main() -> None:
         print(f"Detected delimiter: '{delimiter}'")
 
         game_version = get_game_version(game_folder, delimiter)
-        print(f"Detected game version: '{game_version or 'Unknown'}'")
 
         game_name = get_game_name(game_folder, game_version, delimiter)
         print(f"Detected game: {game_name}")
@@ -301,12 +343,37 @@ def main() -> None:
     if game_appid is not None:
         desc = get_app_description(game_appid)
         print(f"Game description: {desc}")
+        if game_name is None:
+            game_name = get_name_from_appid(game_appid, app_list)
 
     possible_exes = get_game_executables(game_folder)
     if len(possible_exes) > 0:
         print(possible_exes)
     else:
         print("\nNo EXE detected. Are you sure this folder contains a game?")
+
+    # More game_version detection. Try with win32 api.
+    if len(possible_exes) == 1 and game_version is None:
+        # on Windows use win32api to get application version
+        game_version = get_version_number(possible_exes[0])
+        if game_version is None:
+            # Try to find game_version in EXE name
+            game_version = get_game_version(possible_exes[0], is_folder=False)
+        else:
+            print("Found game_version with win32api")
+
+    elif len(possible_exes) > 1 and game_version is None:
+        no_launchers = [exe for exe in possible_exes if "launcher" not in exe.name.lower()]
+        print(f"EXEs not including launchers: {no_launchers}")
+        # fuzzy match best choice
+        for exe in no_launchers:
+            m = fuzz.find_near_matches(game_name, exe.name, max_l_dist=1)
+            if m:
+                print(f"Fuzzy matched EXE: `{exe}`, match: {m}")
+                print("Attempting to get version number using win32 api")
+                game_version = get_version_number(exe)
+
+    print(f"Detected game version: '{game_version or 'Unknown'}'")
 
 
 if __name__ == "__main__":
