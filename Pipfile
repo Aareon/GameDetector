@@ -11,6 +11,7 @@ detect-delimiter = "*"
 ujson = "*"
 beautifulsoup4 = "*"
 ratelimit = "*"
+pywin32 = "*"
 
 [dev-packages]
 black = "*"
