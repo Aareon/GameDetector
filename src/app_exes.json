@@ -83,6 +83,22 @@
         {
             "filename": "pack200.exe",
             "description": "Pack utility for Java applications"
+        },
+        {
+            "filename": "vp6install.exe",
+            "description": "Redist installer for The Sims 4"
+        },
+        {
+            "filename": "Touchup.exe",
+            "description": "Utility for The Sims 4"
+        },
+        {
+            "filename": "Cleanup.exe",
+            "description": "Utility for The Sims 4"
+        },
+        {
+            "filename": "ActivationUI.exe",
+            "description": "Activation utility for Origin games (i.e. The Sims 4)"
         }
     ],
     "fuzz": [
@@ -106,6 +122,8 @@
         "editor",
         "switcher",
         "server",
-        "jjs"
+        "jjs",
+        "language-changer",
+        "dlc-toggler"
     ]
 }
