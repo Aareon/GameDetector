@@ -230,6 +230,18 @@ def check_app_info(game_folder: Path) -> List[str] | None:
     return game_publisher, game_name
 
 
+def check_launcher_settings_json(game_folder: Path) -> str | None:
+    """Get game version from `launcher-settings.json`.
+    Created to detect Prison Architect as a last ditch effort."""
+    game_version = None
+    print("Checking for `launcher-settings.json`")
+    for fp in game_folder.glob("**/*.json"):
+        if fp.name.endswith("launcher-settings.json"):
+            with open(fp) as f:
+                game_version = json.load(f)["version"]
+                return game_version
+
+
 def get_game_name(
     game_folder: Path, game_version: str = None, delimiter: str = "."
 ) -> str:
@@ -372,6 +384,10 @@ def main() -> None:
                 print(f"Fuzzy matched EXE: `{exe}`, match: {m}")
                 print("Attempting to get version number using win32 api")
                 game_version = get_version_number(exe)
+
+    if game_version is None:
+        # Some games offer `launcher-settings.json` (i.e. Prison Architect)
+        game_version = check_launcher_settings_json(game_folder)
 
     print(f"Detected game version: '{game_version or 'Unknown'}'")
 
