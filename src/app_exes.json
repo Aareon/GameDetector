@@ -41,10 +41,6 @@
             "description": "Microsoft Game Launch Helper"
         },
         {
-            "filename": "crashpad_handler.exe",
-            "description": "Google Crashpad Handler"
-        },
-        {
             "filename": "UnityCrashHandler64.exe",
             "description": "Unity Crash Handler"
         },
@@ -55,12 +51,29 @@
         {
             "filename": "dowser.exe",
             "description": "Web-crawler used by Paradox Interactive and others."
+        },
+        {
+            "filename": "java.exe",
+            "description": "Java Runtime"
         }
     ],
     "fuzz": [
         "vcredist",
         "uninstall",
         "setup",
-        "crashreport"
+        "crashreport",
+        "crashpad_handler",
+        "klist",
+        "ktab",
+        "rmid",
+        "rmiregistry",
+        "keytool",
+        "jrunscript",
+        "jfr",
+        "kinit",
+        "java",
+        "jaccess",
+        "jabswitch",
+        "jaotc"
     ]
 }
