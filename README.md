@@ -43,3 +43,7 @@ This program isn't super useful to regular users, but it will be extremely handy
 ## Reporting bugs
 
 Please see [the Issues page](https://github.com/Aareon/GameDetector/issues). Please include the full output from the program.
+
+## License
+
+MIT (free as in free beer, free to redistribute with credit, free to use commercially with credit)
