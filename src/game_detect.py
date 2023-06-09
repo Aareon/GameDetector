@@ -30,7 +30,7 @@ try:
 
     _using_win32 = True
 
-    def get_version_number(app_path: Path):
+    def get_version_number(app_path: Path) -> str | None:
         app_path = str(app_path.resolve())
         try:
             info = GetFileVersionInfo(app_path, "\\")
