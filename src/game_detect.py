@@ -373,16 +373,17 @@ def main() -> None:
         else:
             print("Found game_version with win32api")
 
-    elif len(possible_exes) > 1 and game_version is None:
+    elif len(possible_exes) > 1 or game_version is None:
         no_launchers = [exe for exe in possible_exes if "launcher" not in exe.name.lower()]
         print(f"EXEs not including launchers: {no_launchers}")
         # fuzzy match best choice
-        for exe in no_launchers:
-            m = fuzz.find_near_matches(game_name, exe.name, max_l_dist=1)
-            if m:
-                print(f"Fuzzy matched EXE: `{exe}`, match: {m}")
-                print("Attempting to get version number using win32 api")
-                game_version = get_version_number(exe)
+        if game_version is None:
+            for exe in no_launchers:
+                m = fuzz.find_near_matches(game_name, exe.name, max_l_dist=1)
+                if m:
+                    print(f"Fuzzy matched EXE: `{exe}`, match: {m}")
+                    print("Attempting to get version number using win32 api")
+                    game_version = get_version_number(exe)
 
     if game_version is None:
         # Some games offer `launcher-settings.json` (i.e. Prison Architect)
