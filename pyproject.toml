@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "gamedetector"
+version = "0.1.0"
+description = "The GameDetector library allows you to detect a game within a folder, returning information like Steam AppId, game name, and version."
+authors = ["Aareon Sullivan <askully13@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fuzzysearch = "^0.7.3"
+requests = "^2.31.0"
+detect-delimiter = "^0.1.1"
+ujson = "^5.7.0"
+beautifulsoup4 = "^4.12.2"
+ratelimit = "^2.2.1"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+pipenv = "^2023.6.2"
+poetry = "^1.5.1"
+flake8 = "^6.0.0"
+
+[tool.poetry.group.win32]
+optional = true
+
+[tool.poetry.group.win32.dependencies]
+pywin32 = "^306"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
