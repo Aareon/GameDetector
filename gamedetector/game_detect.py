@@ -108,8 +108,9 @@ def steam_api_call(url: str) -> requests.Response | None:
     return resp
 
 
-def get_app_description(appid: int) -> str:
+def get_app_description(appid: int) -> str | None:
     url = f"http://store.steampowered.com/api/appdetails?appids={appid}"
+    desc = None
     try:
         resp = steam_api_call(url)
     except SteamApiException as e:
@@ -274,7 +275,10 @@ def check_launcher_settings_json(game_folder: Path) -> str | None:
                     game_version = json.load(f)["version"]
                     return game_version
             except UnicodeDecodeError as e:
-                logging.debug(f"An error occurred reading `launcher-settings.json`. Error: {str(e)}", exc_info=True)
+                logging.debug(
+                    f"An error occurred reading `launcher-settings.json`. Error: {str(e)}",
+                    exc_info=True,
+                )
 
 
 def get_game_name(
@@ -341,9 +345,10 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
     Returns:
         game_name: str
     """
-    game_appid = None
-    game_version = None
     game_name = None
+    game_publisher = None
+    game_version = None
+    game_appid = None
 
     app_list = get_app_list()
     logging.debug("Got app_list, proceeding...")
@@ -355,7 +360,7 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
         game_appid = check_appid_txt(game_folder)
         if game_appid is None:
             # Check for `app.info`
-            _, game_name = check_app_info(game_folder)
+            game_publisher, game_name = check_app_info(game_folder)
             if game_name is not None:
                 game_appid = get_appid_from_name(game_name, app_list)
                 logging.debug(f"Found `app.info` - AppId: {game_appid}")
@@ -423,7 +428,9 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
                     m = fuzz.find_near_matches(game_name, exe.name, max_l_dist=1)
                     if m:
                         logging.debug(f"Fuzzy matched EXE: `{exe}`, match: {m}")
-                        logging.debug("Attempting to get version number using win32 api")
+                        logging.debug(
+                            "Attempting to get version number using win32 api"
+                        )
                         game_version = get_version_number(exe)
 
     if game_version is None:
@@ -432,9 +439,20 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
 
     logging.info(f"Detected game version: '{game_version or 'Unknown'}'")
     if game_appid is not None:
-        game = SteamGame(name=game_name, version=get_game_executables, path=game_folder, appid=game_appid)
+        game = SteamGame(
+            name=game_name,
+            publisher=game_publisher,
+            version=game_version,
+            path=game_folder,
+            appid=game_appid,
+        )
     else:
-        game = NonSteamGame(name=game_name, version=get_game_executables, path=game_folder)
+        game = NonSteamGame(
+            name=game_name,
+            publisher=game_publisher,
+            version=game_version,
+            path=game_folder,
+        )
     return game
 
 
