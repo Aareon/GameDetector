@@ -75,6 +75,7 @@ class NonSteamGame:
     name: str
     publisher: str
     version: str
+    description: str
     path: Path
 
 
@@ -84,6 +85,7 @@ class SteamGame(NonSteamGame):
     name: str
     publisher: str
     version: str
+    description: str
     path: Path
 
 
@@ -394,8 +396,8 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
                 logging.debug(f"Detected appid: {game_appid}")
 
     if game_appid is not None:
-        desc = get_app_description(game_appid)
-        logging.info(f"Game description: {desc}")
+        game_desc = get_app_description(game_appid)
+        logging.info(f"Game description: {game_desc}")
         if game_name is None:
             game_name = get_name_from_appid(game_appid, app_list)
 
@@ -437,6 +439,9 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
         # Some games offer `launcher-settings.json` (i.e. Prison Architect)
         game_version = check_launcher_settings_json(game_folder)
 
+    if game_desc is None and game_appid is not None:
+        game_desc = get_app_description(game_appid)
+
     logging.info(f"Detected game version: '{game_version or 'Unknown'}'")
     if game_appid is not None:
         game = SteamGame(
@@ -444,6 +449,7 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
             publisher=game_publisher,
             version=game_version,
             path=game_folder,
+            description=game_desc or "",
             appid=game_appid,
         )
     else:
@@ -451,6 +457,7 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
             name=game_name,
             publisher=game_publisher,
             version=game_version,
+            description=game_desc or "",
             path=game_folder,
         )
     return game
