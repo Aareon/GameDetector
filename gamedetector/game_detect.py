@@ -350,6 +350,7 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
     game_name = None
     game_publisher = None
     game_version = None
+    game_desc = None
     game_appid = None
 
     app_list = get_app_list()
