@@ -4,7 +4,6 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pysimplegui = "*"
 fuzzysearch = "*"
 requests = "*"
 detect-delimiter = "*"
@@ -15,6 +14,7 @@ pywin32 = "*"
 
 [dev-packages]
 black = "*"
+poetry = "*"
 
 [requires]
 python_version = "3.10"
