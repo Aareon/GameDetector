@@ -1,0 +1,132 @@
+{
+    "exes": [
+        {
+            "filename": "BsSndRpt64.exe",
+            "description": "Bug Splat Crash Report Utility"
+        },
+        {
+            "filename": "dxwebsetup.exe",
+            "description": "DirectX Web Setup Redistributable"
+        },
+        {
+            "filename": "DXSETUP.exe",
+            "description": "DirectX Setup Redistributable"
+        },
+        {
+            "filename": "ZFGameBrowser.exe",
+            "description": "Surveys, notices, info, feedback, and customer services."
+        },
+        {
+            "filename": "oalinst.exe",
+            "description": "OpenAL Setup Redistributable"
+        },
+        {
+            "filename": "UE4PrereqSetup_x64.exe",
+            "description": "Unreal Engine 4 Prerequisites Setup"
+        },
+        {
+            "filename": "UNINSTALL.exe",
+            "description": "Uninstaller"
+        },
+        {
+            "filename": "CrashReportClient.exe",
+            "description": "Unreal Engine 4 Crash Report Client"
+        },
+        {
+            "filename": "unins000.exe",
+            "description": "Uninstaller"
+        },
+        {
+            "filename": "gamelaunchhelper.exe",
+            "description": "Microsoft Game Launch Helper"
+        },
+        {
+            "filename": "UnityCrashHandler64.exe",
+            "description": "Unity Crash Handler"
+        },
+        {
+            "filename": "LanguageSetup.exe",
+            "description": "Language(s) Setup"
+        },
+        {
+            "filename": "dowser.exe",
+            "description": "Web-crawler used by Paradox Interactive and others."
+        },
+        {
+            "filename": "java.exe",
+            "description": "Java Runtime"
+        },
+        {
+            "filename": "BlizzardError.exe",
+            "description": "Crash Handler for Blizzard games"
+        },
+        {
+            "filename": "QuickSFV.EXE",
+            "description": "Redistributable"
+        },
+        {
+            "filename": "Restarter.exe",
+            "description": "Game restart utility for Oxygen Not Included"
+        },
+        {
+            "filename": "rmid.exe",
+            "description": "Java utility"
+        },
+        {
+            "filename": "CEFProcess.exe",
+            "description": "Utility used by Stellaris"
+        },
+        {
+            "filename": "unpack200.exe",
+            "description": "Unpack utility for Java applications"
+        },
+        {
+            "filename": "pack200.exe",
+            "description": "Pack utility for Java applications"
+        },
+        {
+            "filename": "vp6install.exe",
+            "description": "Redist installer for The Sims 4"
+        },
+        {
+            "filename": "Touchup.exe",
+            "description": "Utility for The Sims 4"
+        },
+        {
+            "filename": "Cleanup.exe",
+            "description": "Utility for The Sims 4"
+        },
+        {
+            "filename": "ActivationUI.exe",
+            "description": "Activation utility for Origin games (i.e. The Sims 4)"
+        }
+    ],
+    "fuzz": [
+        "vcredist",
+        "uninstall",
+        "setup",
+        "crashreport",
+        "crashpad_handler",
+        "klist",
+        "ktab",
+        "rmiregistry",
+        "keytool",
+        "jrunscript",
+        "jfr",
+        "kinit",
+        "java",
+        "jaccess",
+        "jabswitch",
+        "jaotc",
+        "cache",
+        "editor",
+        "switcher",
+        "server",
+        "jjs",
+        "language-changer",
+        "dlc-toggler",
+        "Baapp",
+        "essimporter",
+        "iniimporter"
+    ]
+}
