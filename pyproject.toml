@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "gamedetector"
-version = "0.1.0"
+version = "0.1.2"
 description = "The GameDetector library allows you to detect a game within a folder, returning information like Steam AppId, game name, and version."
 authors = ["Aareon Sullivan <askully13@gmail.com>"]
 license = "MIT"
