@@ -269,9 +269,12 @@ def check_launcher_settings_json(game_folder: Path) -> str | None:
     logging.debug("Checking for `launcher-settings.json`")
     for fp in game_folder.glob("**/*.json"):
         if fp.name.endswith("launcher-settings.json"):
-            with open(fp) as f:
-                game_version = json.load(f)["version"]
-                return game_version
+            try:
+                with open(fp) as f:
+                    game_version = json.load(f)["version"]
+                    return game_version
+            except UnicodeDecodeError as e:
+                logging.debug(f"An error occurred reading `launcher-settings.json`. Error: {str(e)}", exc_info=True)
 
 
 def get_game_name(
@@ -330,7 +333,7 @@ def get_name_from_appid(appid: int, app_list: dict = {}) -> str:
             return game_name
 
 
-def detect_folder(game_folder: Path) -> str:
+def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
     """Perform detection on a game folder.
 
     Args:
@@ -415,19 +418,24 @@ def detect_folder(game_folder: Path) -> str:
         logging.debug(f"EXEs not including launchers: {no_launchers}")
         # fuzzy match best choice
         if game_version is None:
-            for exe in no_launchers:
-                m = fuzz.find_near_matches(game_name, exe.name, max_l_dist=1)
-                if m:
-                    logging.debug(f"Fuzzy matched EXE: `{exe}`, match: {m}")
-                    logging.debug("Attempting to get version number using win32 api")
-                    game_version = get_version_number(exe)
+            if len(no_launchers) != 0:
+                for exe in no_launchers:
+                    m = fuzz.find_near_matches(game_name, exe.name, max_l_dist=1)
+                    if m:
+                        logging.debug(f"Fuzzy matched EXE: `{exe}`, match: {m}")
+                        logging.debug("Attempting to get version number using win32 api")
+                        game_version = get_version_number(exe)
 
     if game_version is None:
         # Some games offer `launcher-settings.json` (i.e. Prison Architect)
         game_version = check_launcher_settings_json(game_folder)
 
     logging.info(f"Detected game version: '{game_version or 'Unknown'}'")
-    return game_name
+    if game_appid is not None:
+        game = SteamGame(name=game_name, version=get_game_executables, path=game_folder, appid=game_appid)
+    else:
+        game = NonSteamGame(name=game_name, version=get_game_executables, path=game_folder)
+    return game
 
 
 def main() -> str:
