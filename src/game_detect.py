@@ -8,13 +8,15 @@ Detect name of a game based on folder name or EXE name.
 """
 import re
 import sys
+import time
 from configparser import ConfigParser
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from tkinter import filedialog
 from typing import List
-import fuzzysearch as fuzz
 
+import fuzzysearch as fuzz
 import ratelimit
 import requests
 from detect_delimiter import detect
@@ -25,7 +27,8 @@ except ImportError:
     import json
 
 try:
-    from win32api import GetFileVersionInfo, LOWORD, HIWORD, error as win32error
+    from win32api import HIWORD, LOWORD, GetFileVersionInfo
+    from win32api import error as win32error
     from win32com.client import Dispatch
 
     _using_win32 = True
@@ -47,6 +50,7 @@ except ImportError:
 
     def get_version_number(app_path: Path):
         pass
+
 
 # Useful files to look for
 # steam_emu.ini (INI)
@@ -104,10 +108,18 @@ def get_app_description(appid: int) -> str:
     return desc
 
 
-def get_app_list() -> dict:
+def get_app_list(should_update=False) -> dict:
     # get app list from Steam
     app_list_fp = Path(__file__).parent / "app_list.json"
-    if not app_list_fp.exists():
+    mod_time = app_list_fp.stat().st_mtime  # modified time
+    hr_12_ts = 86400000 / 2  # 24 hours in (ms)
+    past_12_hrs = time.time() - mod_time >= hr_12_ts  # 12 hours has passed
+
+    print(f"`app_list.json` last updated {datetime.fromtimestamp(mod_time)}")
+
+    if not app_list_fp.exists() or past_12_hrs or should_update:
+        if past_12_hrs:
+            print("12 hours has passed, updating `app_list.json`")
         try:
             resp = steam_api_call(
                 "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
@@ -141,7 +153,9 @@ def steam_game_from_appid(game_appid: int, app_list: dict = {}) -> SteamGame:
             return SteamGame(name=game_name, appid=game_appid)
 
 
-def get_game_version(game_folder: Path, delimiter: str = ".", is_folder=True) -> str | None:
+def get_game_version(
+    game_folder: Path, delimiter: str = ".", is_folder=True
+) -> str | None:
     """Get game version from version identifier in folder name"""
     game_version = None
 
@@ -217,7 +231,7 @@ def check_appid_txt(game_folder: Path) -> int | None:
 
 def check_app_info(game_folder: Path) -> List[str] | None:
     """Get publisher/game name from app.info in game folder"""
-    # TODO improve type hint, return is [publisher str, game name str]
+    # TODO improve type hint, return is [publisher str, game name str] (mmm type annotations)
     game_publisher = None
     game_name = None
     for fp in game_folder.glob("**/*.info"):
@@ -258,7 +272,7 @@ def get_game_name(
 
 def get_game_executables(game_folder: Path) -> List[Path] | List:
     """Get game executables in folder"""
-    # TODO fuzzy search known redists (ie. vc_redist) and remove from list
+    # TODO fuzzy search known redists (ie. vc_redist) and remove from list (done!)
     with open(Path(__file__).parent / "app_exes.json") as f:
         fj = json.load(f)
         ignore = [a["filename"].lower() for a in fj["exes"]]
@@ -298,18 +312,19 @@ def get_name_from_appid(appid: int, app_list: dict = {}) -> str:
             return game_name
 
 
-def main() -> None:
+def detect_folder(game_folder: Path) -> str:
+    """Perform detection on a game folder.
+
+    Args:
+        [Optional] game_folder: Path
+    Returns:
+        game_name: str
+    """
     game_appid = None
     game_version = None
     game_name = None
 
-    # Open a folder select dialog and return Steam appid if game is detected.
-    game_folder = Path(filedialog.askdirectory())
-    print(f"Game folder selected: {game_folder.name}")
-
     app_list = get_app_list()
-
-    print("Checking for known helper files. This might take a second...")
 
     # Check for `steam_emu.ini`
     game_appid = check_steam_emu(game_folder)
@@ -374,7 +389,10 @@ def main() -> None:
             print("Found game_version with win32api")
 
     elif len(possible_exes) > 1 or game_version is None:
-        no_launchers = [exe for exe in possible_exes if "launcher" not in exe.name.lower()]
+        # attempt to remove launcher binaries and check version on left over EXE (if 1)
+        no_launchers = [
+            exe for exe in possible_exes if "launcher" not in exe.name.lower()
+        ]
         print(f"EXEs not including launchers: {no_launchers}")
         # fuzzy match best choice
         if game_version is None:
@@ -390,6 +408,14 @@ def main() -> None:
         game_version = check_launcher_settings_json(game_folder)
 
     print(f"Detected game version: '{game_version or 'Unknown'}'")
+    return game_name
+
+
+def main() -> str:
+    # Open a folder select dialog and return Steam appid if game is detected.
+    game_folder = Path(filedialog.askdirectory())
+    print(f"Game folder selected: {game_folder.name}")
+    detect_folder(game_folder)
 
 
 if __name__ == "__main__":
