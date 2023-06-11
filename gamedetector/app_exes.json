@@ -99,6 +99,10 @@
         {
             "filename": "ActivationUI.exe",
             "description": "Activation utility for Origin games (i.e. The Sims 4)"
+        },
+        {
+            "filename": "scriptinterpreter.exe",
+            "description": "Interpreter for KSP scripts."
         }
     ],
     "fuzz": [
@@ -127,6 +131,8 @@
         "dlc-toggler",
         "Baapp",
         "essimporter",
-        "iniimporter"
+        "iniimporter",
+        "unins000",
+        "scriptinterpreter"
     ]
 }
