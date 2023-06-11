@@ -14,8 +14,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog
 from typing import List
+import shutil
 
 import fuzzysearch as fuzz
+import py7zr
 import ratelimit
 import requests
 from detect_delimiter import detect
@@ -211,6 +213,28 @@ def get_game_version(
     return game_version
 
 
+def check_steam_api_ini(game_folder: Path) -> int | None:
+    appid = None
+    steam_api = ConfigParser()
+    if game_folder.is_file():
+        steam_api.read(game_folder)
+        appid = steam_api["Steam"]["AppId"].lstrip().rstrip()
+    elif game_folder.is_dir():
+        for fp in game_folder.glob("**/*.ini"):
+            if fp.name.endswith("steam_api.ini"):
+                steam_api.read(fp)
+                appid = steam_api["Steam"]["AppId"].lstrip().rstrip()
+
+    # remove leading zeroes
+    n = 0
+    if appid is not None and appid.startswith("0"):
+        for c in appid:
+            if c == "0":
+                n += 1
+        appid = appid[n-1:]
+    return appid
+
+
 def check_steam_emu(game_folder: Path) -> int | None:
     """Recursively check game folder for `steam_emu.ini`, which may contain the games AppId.
     This is the preferred method and first choice when detecting the game."""
@@ -339,13 +363,99 @@ def get_name_from_appid(appid: int, app_list: dict = {}) -> str:
             return game_name
 
 
+def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
+    """Perform detection on a 7z-compressed game
+    Args:
+        game_path: Path
+    Returns:
+        SteamGame | NonSteamGame
+    """
+
+    # cleanup .tmp directory
+    tmp = Path(__file__).parent / ".tmp"
+    if tmp.is_dir():
+        shutil.rmtree(tmp)
+
+    if game_path.suffix != ".7z":
+        raise AttributeError("Path is not a 7-zip file")
+
+    logging.debug(f"Ext: `{game_path.suffix}`")
+
+    with open(Path(__file__).parent / "app_exes.json") as f:
+        j = json.load(f)
+        ignore_exes = j["exes"]
+        fuzzers = j["fuzz"]
+
+    with py7zr.SevenZipFile(game_path) as z:
+        fnames = z.getnames()  # get names of all files in archive
+        target_files = []
+        helpers = []
+
+        # find helper files
+        for f in fnames:
+            match Path(f).name:
+                case "tipsy.ini":
+                    helpers.append(f)
+                case "steam_api.ini":
+                    helpers.append(f)
+                case "steam_emu.ini":
+                    helpers.append(f)
+                case "app.info":
+                    helpers.append(f)
+                case "appid.txt":
+                    helpers.append(f)
+                case _:
+                    # not a file we care about
+                    pass
+
+        if len(target_files) > 0:
+            logging.debug(f"Found helper(s): {target_files}")
+        else:
+            logging.debug("No helper files found in archive.")
+
+        ignore = [f["filename"].lower() for f in ignore_exes]
+        exes = [f for f in fnames if f.endswith(".exe") if Path(f).name.lower() not in ignore]
+
+        logging.debug(f"Found EXEs: {exes}")
+
+        fuzzed_exes = set()
+
+        for i, exe in enumerate(exes):
+            for fz in fuzzers:
+                m = fuzz.find_near_matches(fz, exe, max_l_dist=1)
+                if not m:
+                    fuzzed_exes.add(exe)
+                    continue
+                logging.debug(f"{exe} matched: {m}")
+
+        logging.debug(f"Fuzzed EXEs: {fuzzed_exes}")
+
+        logging.debug(f"Files to unpack: {helpers + list(fuzzed_exes)}")
+
+        logging.debug("Reading helpers...")
+        for fname, bio in z.read(helpers + list(fuzzed_exes)).items():
+            # create a temporary directory to store helper files for reading
+            tmp = Path(__file__).parent / ".tmp"
+            tmp.mkdir(exist_ok=True)
+            with open(tmp / Path(fname).name, "wb") as f:
+                f.write(bio.read())
+
+    game = detect_folder(Path(__file__).parent / ".tmp")
+    logging.info(f"(7z) Detected game: {game}")
+
+    # cleanup tmp again
+    if tmp.is_dir():
+        shutil.rmtree(tmp)
+        logging.debug("Cleaned up `.tmp`")
+
+
 def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
     """Perform detection on a game folder.
 
     Args:
-        [Optional] game_folder: Path
+        game_folder: Path
     Returns:
-        game_name: str
+        SteamGame | NonSteamGame
     """
     game_name = None
     game_publisher = None
@@ -362,11 +472,14 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
         # Check `steam_appid.txt`
         game_appid = check_appid_txt(game_folder)
         if game_appid is None:
-            # Check for `app.info`
-            game_publisher, game_name = check_app_info(game_folder)
-            if game_name is not None:
-                game_appid = get_appid_from_name(game_name, app_list)
-                logging.debug(f"Found `app.info` - AppId: {game_appid}")
+            # Check for `steam_api.ini`
+            game_appid = check_steam_api_ini(game_folder)
+            if game_appid is None:
+                # Check for `app.info`
+                game_publisher, game_name = check_app_info(game_folder)
+                if game_name is not None:
+                    game_appid = get_appid_from_name(game_name, app_list)
+                    logging.debug(f"Found `app.info` - AppId: {game_appid}")
         else:
             logging.debug(f"Found `steam_appid.txt` - AppId: {game_appid}")
     else:
@@ -443,6 +556,9 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
     if game_desc is None and game_appid is not None:
         game_desc = get_app_description(game_appid)
 
+    if game_name is None and game_appid is not None:
+        game_name = get_name_from_appid(int(game_appid))
+
     logging.info(f"Detected game version: '{game_version or 'Unknown'}'")
     if game_appid is not None:
         game = SteamGame(
@@ -466,9 +582,13 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
 
 def main() -> str:
     # Open a folder select dialog and return Steam appid if game is detected.
-    game_folder = Path(filedialog.askdirectory())
+    game_folder = Path(filedialog.askopenfilename(filetypes=[("7-zip Files", ".7z")]))
+    if game_folder == Path("."):
+        print("Nothing selected. Quitting...")
+        sys.exit(0)
     logging.info(f"Game folder selected: {game_folder.name}")
-    detect_folder(game_folder)
+    # detect_folder(game_folder)
+    detect_7z(game_folder)
 
 
 if __name__ == "__main__":
