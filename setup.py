@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 setup(
     name='GameDetector',
     packages=find_packages(include=['gamedetector']),
-    version='0.1.7',
+    version='0.2.0',
     description='The GameDetector library allows you to detect a game within a folder, returning information like Steam'
             ' AppId, game name, and version.',
     long_description=(Path("__file__").parent / "README.md").read_text(),
