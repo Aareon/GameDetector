@@ -34,11 +34,21 @@ After installing dependencies, and given that their were no errors in doing so, 
 py ./src/game_detect.py
 ```
 
-## What to expect after running
+## What to expect after running directly
 
 After executing the program, you will be prompted to select a folder (game folder). The program will then attempt to detect what game it is based on things like folder name, as well as checking known files that are commonly available in many distributions of games. It will tell you the name of the game detected, the version, the Steam AppId (if available on Steam), as well as a game description.
 
 This program isn't super useful to regular users, but it will be extremely handy to have as a library for other applications.
+
+## Usage as a library
+```py
+from pathlib import Path
+
+from gamedetector.game_detect import detect_folder, detect_7z, NonSteamGame, SteamGame
+
+game_path = detect_folder(Path("some path to a game"))  # will return either NonSteamGame, or SteamGame if AppId is found
+game_7z_path = detect_7z(Path("path to 7z file containing game"))  # will return same as above
+```
 
 ## Reporting bugs
 
