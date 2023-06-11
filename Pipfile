@@ -11,6 +11,7 @@ ujson = "*"
 beautifulsoup4 = "*"
 ratelimit = "*"
 pywin32 = "*"
+py7zr = "*"
 
 [dev-packages]
 black = "*"
