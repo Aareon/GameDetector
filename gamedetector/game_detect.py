@@ -8,13 +8,13 @@ Detect name of a game based on folder name or EXE name.
 """
 import logging
 import re
+import shutil
 import sys
 from configparser import ConfigParser
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog
 from typing import List
-import shutil
 
 import fuzzysearch as fuzz
 import py7zr
@@ -66,6 +66,8 @@ except ImportError:
 # steam_emu.ini (INI)
 # MicrosoftGame.Config (XML)
 # app.info (INFO)  # publisher/game name
+# steam_api.ini (INI) appid
+# TODO ChromaAppInfo.xml (XML) used by Factorio, contains name and description
 
 
 class SteamApiException(Exception):
@@ -231,7 +233,7 @@ def check_steam_api_ini(game_folder: Path) -> int | None:
         for c in appid:
             if c == "0":
                 n += 1
-        appid = appid[n-1:]
+        appid = appid[n - 1 :]
     return appid
 
 
@@ -414,7 +416,12 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
             logging.debug("No helper files found in archive.")
 
         ignore = [f["filename"].lower() for f in ignore_exes]
-        exes = [f for f in fnames if f.endswith(".exe") if Path(f).name.lower() not in ignore]
+        exes = [
+            f
+            for f in fnames
+            if f.endswith(".exe")
+            if Path(f).name.lower() not in ignore
+        ]
 
         logging.debug(f"Found EXEs: {exes}")
 
@@ -423,17 +430,18 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
         for i, exe in enumerate(exes):
             for fz in fuzzers:
                 m = fuzz.find_near_matches(fz, exe, max_l_dist=1)
-                if not m:
+                if m:
                     fuzzed_exes.add(exe)
-                    continue
-                logging.debug(f"{exe} matched: {m}")
+                    logging.debug(f"{exe} matched: {m}")
 
         logging.debug(f"Fuzzed EXEs: {fuzzed_exes}")
 
-        logging.debug(f"Files to unpack: {helpers + list(fuzzed_exes)}")
+        unpack_exes = [f for f in exes if f not in fuzzed_exes]
 
-        logging.debug("Reading helpers...")
-        for fname, bio in z.read(helpers + list(fuzzed_exes)).items():
+        logging.debug(f"Files to unpack: {helpers + unpack_exes}")
+
+        logging.debug("Unpacking targets...")
+        for fname, bio in z.read(helpers + unpack_exes).items():
             # create a temporary directory to store helper files for reading
             tmp = Path(__file__).parent / ".tmp"
             tmp.mkdir(exist_ok=True)
