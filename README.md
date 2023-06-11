@@ -44,10 +44,10 @@ This program isn't super useful to regular users, but it will be extremely handy
 ```py
 from pathlib import Path
 
-from gamedetector.game_detect import detect_game_folder, NonSteamGame, SteamGame
+from gamedetector.game_detect import detect_game_folder, detectNonSteamGame, SteamGame
 
-game_path = Path("some path to a game")  # will return either NonSteamGame, or SteamGame if AppId is found
-game_7z_path = Path("path to 7z file containing game")  # will return same as above
+game_path = detect_game_folder(Path("some path to a game"))  # will return either NonSteamGame, or SteamGame if AppId is found
+game_7z_path = detect_game_7z(Path("path to 7z file containing game"))  # will return same as above
 ```
 
 ## Reporting bugs
