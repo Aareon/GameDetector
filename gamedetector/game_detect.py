@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog
 from typing import List
+from enum import Enum
 
 import fuzzysearch as fuzz
 import py7zr
@@ -68,11 +69,16 @@ except ImportError:
 # app.info (INFO)  # publisher/game name
 # steam_api.ini (INI) appid
 # ChromaAppInfo.xml (XML) used by Factorio, contains name and description
-# TODO: goggame-#.ini - https://api.gog.com/products/1458058109
+# TODO: goggame-#.INFO - https://api.gog.com/products/1458058109
+#   glob goggame-*.info
 
 
 class SteamApiException(Exception):
     """Exception class for errors when making Steam API calls"""
+
+
+class GogApiException(Exception):
+    """Exception class for errors when making GOG API calls"""
 
 
 class NoGameException(Exception):
@@ -98,8 +104,25 @@ class SteamGame(NonSteamGame):
     path: Path
 
 
+@dataclass
+class GogGame(SteamGame):
+    gogid: int
+    name: str
+    publisher: str
+    version: str
+    description: str
+    path: Path
+
+
+class Game(Enum):
+    NoGame = 0
+    NonSteamGame = NonSteamGame
+    SteamGame = SteamGame
+    GogGame = GogGame
+
+
 # Steam API calls allow up to 200 requests in 5 minutes
-@ratelimit.limits(calls=175, period=300)
+@ratelimit.limits(calls=175, period=300, raise_on_limit=True)
 def steam_api_call(url: str) -> requests.Response | None:
     """Make a call to Steam API with respect to ratelimits.
     Automatically handle a failure and raise SteamApiException"""
@@ -119,20 +142,62 @@ def steam_api_call(url: str) -> requests.Response | None:
     return resp
 
 
-def get_app_description(appid: int) -> str | None:
-    url = f"http://store.steampowered.com/api/appdetails?appids={appid}"
-    desc = None
+# GOG API calls allow up to 50 requests in 5 minutes
+@ratelimit.limits(calls=50, period=300, raise_on_limit=True)
+def gog_api_call(url: str) -> requests.Response | None:
+    """Make a call to GOG API with respect to ratelimits.
+    Automatically handle a failure and raise GogApiException"""
+    resp = None
+
     try:
-        resp = steam_api_call(url)
-    except SteamApiException as e:
-        logging.error(
-            f"An error occurred getting `app_description`. Error: {str(e)}",
-            exc_info=True,
+        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=5)
+    except Exception as e:
+        raise GogApiException(e)
+
+    if resp.status_code != 200:
+        raise GogApiException(
+            f"Failed to connect to '{url}', please check your connection and try again later."
+            f" Status code: {resp.status_code}"
         )
 
-    data = resp.json()
-    if data[f"{appid}"].get("success", False):
-        desc = data[f"{appid}"]["data"]["short_description"]
+    return resp
+
+
+def get_app_description(game: Game = Game.NoGame, appid: int = None) -> str | None:
+    """Get description for game using Steam AppId
+    Args:
+        appid: int
+    Returns:
+        description: str
+    """
+    desc = None
+
+    if appid is not None or isinstance(game, Game.SteamGame):
+        url = f"http://store.steampowered.com/api/appdetails?appids={appid}"
+        try:
+            resp = steam_api_call(url)
+            data = resp.json()[f"{appid}"]
+            if not data.get("success", False):
+                logging.error(
+                    f"Getting details `success` failed for getting description ({appid})"
+                )
+            desc = data["data"].get("short_description")
+        except SteamApiException as e:
+            logging.error(
+                f"An error occurred getting `app_description`. Error: {str(e)}",
+                exc_info=True,
+            )
+            return
+    elif isinstance(game, Game.GogGame):
+        url = f"https://api.gog.com/products/{game.gogid}?expand=description"
+        resp = gog_api_call(url)
+        data = resp.json()
+        if data.get("id") != game.gogid:
+            logging.error(
+                f"An issue occurred getting description for GOG game `{game.gogid}`"
+            )
+        desc = data.get("description").get("lead")
+
     return desc
 
 
@@ -181,6 +246,30 @@ def steam_game_from_appid(game_appid: int, app_list: dict = {}) -> SteamGame:
         if game["appid"] == game_appid:
             game_name = game["name"]
             return SteamGame(name=game_name, appid=game_appid)
+
+
+def gog_game_from_gogid(gogid: int) -> GogGame:
+    name = None
+    desc = None
+
+    url = f"https://api.gog.com/products/{gogid}?expand=description"
+    resp = gog_api_call(url)
+    data = resp.json()
+
+    if data.get("id") != gogid:
+        logging.error(f"An issue occurred getting description for GOG game `{gogid}`")
+
+    name = data.get("title")
+    desc = data.get("description").get("lead")
+    game = GogGame(
+        gogid=gogid,
+        name=name,
+        publisher=None,
+        version=None,
+        description=desc,
+        path=None,
+    )
+    return game
 
 
 def get_game_version(
@@ -240,7 +329,9 @@ def check_steam_api_ini(game_folder: Path) -> int | None:
                     except NoSectionError:
                         s = None
                 if s is None:
-                    logging.error("Malformed `steam_api.ini`. Please report this issue.")
+                    logging.error(
+                        "Malformed `steam_api.ini`. Please report this issue."
+                    )
                     return
                 appid = s.lstrip().rstrip()
     else:
@@ -253,7 +344,7 @@ def check_steam_api_ini(game_folder: Path) -> int | None:
         for c in appid:
             if c == "0":
                 n += 1
-        appid = int(appid[n - 1:])
+        appid = int(appid[n - 1 :])
 
     return appid
 
@@ -355,10 +446,39 @@ def check_chroma_app_info_xml(game_folder: Path) -> str | None:
                 query = "<title>"
                 i = line.find(query)
                 if i != -1:
-                    name = line[i + len(query):].replace("</title>", "")
+                    name = line[i + len(query) :].replace("</title>", "")
                     break
 
     return name
+
+
+def check_gog_game_info(game_folder: Path) -> int | None:
+    gogid = None
+    goggame_fp = game_folder.glob("**/goggame-*.info")[0]
+    if goggame_fp.name.startswith("goggame-"):
+        gogid = int(goggame_fp.name.split("-")[1].strip(".info"))
+    else:
+        logging.debug("Could not find `goggame-*.info`.")
+    return gogid
+
+
+def get_name_from_gogid(gogid: int) -> str | None:
+    url = f"https://api.gog.com/products/{gogid}"
+    title = None
+    try:
+        resp = gog_api_call(url)
+    except GogApiException as e:
+        logging.error(
+            f"An error occurred getting `title`. Error: {str(e)}",
+            exc_info=True,
+        )
+
+    data = resp.json()
+    if data.get("id") != gogid:
+        logging.error(f"An issue occurred getting name for GOG game ({gogid})")
+        return
+    title = data.get("title")
+    return title
 
 
 def get_game_name(
@@ -527,13 +647,18 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
                 description=get_app_description(appid),
                 publisher=None,
                 path=game_path,
-                appid=appid
+                appid=appid,
             )
             if appid is None:
                 raise NoGameException(game)
         if version is not None:
             game.version = version.strip(".7z")  # v03.03.2020.7z
-            game.name = game.path.name.strip(".7z").replace(version, "").replace(".", " ").rstrip()
+            game.name = (
+                game.path.name.strip(".7z")
+                .replace(version, "")
+                .replace(".", " ")
+                .rstrip()
+            )
     elif game.version is not None and isinstance(game, NonSteamGame):
         game.name = get_game_name(game.path, game.version)
 
@@ -550,7 +675,7 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
             version=game.version,
             description=get_app_description(appid),
             appid=appid,
-            path=game.path
+            path=game.path,
         )
 
     if isinstance(game, SteamGame):
@@ -694,7 +819,10 @@ def main() -> str:
     # Open a folder select dialog and return Steam appid if game is detected.
     prompt = "7zip archive (1), or folder (2)> "
     choice = input(prompt)
-    while choice not in ("1", "2",):
+    while choice not in (
+        "1",
+        "2",
+    ):
         choice = input(prompt)
 
     if choice == "1":
