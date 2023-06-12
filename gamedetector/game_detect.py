@@ -10,7 +10,7 @@ import logging
 import re
 import shutil
 import sys
-from configparser import ConfigParser
+from configparser import ConfigParser, NoSectionError
 from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog
@@ -40,7 +40,7 @@ try:
 
     _using_win32 = True
 
-    def get_version_number(app_path: Path) -> str | None:
+    def _get_version_number(app_path: Path) -> str | None:
         app_path = str(app_path.resolve())
         try:
             info = GetFileVersionInfo(app_path, "\\")
@@ -58,7 +58,7 @@ try:
 except ImportError:
     _using_win32 = False
 
-    def get_version_number(app_path: Path) -> None:
+    def _get_version_number(app_path: Path) -> None:
         pass
 
 
@@ -67,11 +67,16 @@ except ImportError:
 # MicrosoftGame.Config (XML)
 # app.info (INFO)  # publisher/game name
 # steam_api.ini (INI) appid
-# TODO ChromaAppInfo.xml (XML) used by Factorio, contains name and description
+# ChromaAppInfo.xml (XML) used by Factorio, contains name and description
+# TODO: goggame-#.ini - https://api.gog.com/products/1458058109
 
 
 class SteamApiException(Exception):
     """Exception class for errors when making Steam API calls"""
+
+
+class NoGameException(Exception):
+    """Exception for when a folder probably does not contain a game"""
 
 
 @dataclass
@@ -225,7 +230,22 @@ def check_steam_api_ini(game_folder: Path) -> int | None:
         for fp in game_folder.glob("**/*.ini"):
             if fp.name.endswith("steam_api.ini"):
                 steam_api.read(fp)
-                appid = steam_api["Steam"]["AppId"].lstrip().rstrip()
+                try:
+                    s = steam_api.get("Steam", "AppId")
+                except NoSectionError:
+                    s = None
+                if s is None:
+                    try:
+                        s = steam_api.get("Settings", "AppId")
+                    except NoSectionError:
+                        s = None
+                if s is None:
+                    logging.error("Malformed `steam_api.ini`. Please report this issue.")
+                    return
+                appid = s.lstrip().rstrip()
+    else:
+        logging.debug("Could not find `ChromaAppInfo.xml`.")
+        return
 
     # remove leading zeroes
     n = 0
@@ -233,7 +253,8 @@ def check_steam_api_ini(game_folder: Path) -> int | None:
         for c in appid:
             if c == "0":
                 n += 1
-        appid = appid[n - 1 :]
+        appid = int(appid[n - 1:])
+
     return appid
 
 
@@ -309,6 +330,37 @@ def check_launcher_settings_json(game_folder: Path) -> str | None:
                 )
 
 
+def check_chroma_app_info_xml(game_folder: Path) -> str | None:
+    """Check ChromaAppInfo.xml for game name
+    Args:
+        game_folder: <Path> may be file or folder containing `ChromaAppInfo.xml`"""
+    name = None  # detected game name
+    fp = None  # path to `ChromaAppInfo.xml`
+
+    if game_folder.is_file() and game_folder.name == "ChromaAppInfo.xml":
+        logging.debug("Found ChromaAppInfo.xml")
+        fp = game_folder
+    elif game_folder.is_dir():
+        for fp in game_folder.glob("**/ChromaAppInfo.xml"):
+            if fp:
+                break
+    else:
+        logging.debug("Could not find `ChromaAppInfo.xml`.")
+        return
+
+    if fp is not None:
+        with open(fp, "r") as f:
+            for line in f.readlines():
+                line = line.lstrip().rstrip()
+                query = "<title>"
+                i = line.find(query)
+                if i != -1:
+                    name = line[i + len(query):].replace("</title>", "")
+                    break
+
+    return name
+
+
 def get_game_name(
     game_folder: Path, game_version: str = None, delimiter: str = "."
 ) -> str:
@@ -372,6 +424,7 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
     Returns:
         SteamGame | NonSteamGame
     """
+    logging.info("(7z) Detecting game. Large games may take a little while...")
 
     # cleanup .tmp directory
     tmp = Path(__file__).parent / ".tmp"
@@ -395,7 +448,7 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
 
         # find helper files
         for f in fnames:
-            match Path(f).name:
+            match Path(f).name.lower():
                 case "tipsy.ini":
                     helpers.append(f)
                 case "steam_api.ini":
@@ -405,6 +458,8 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
                 case "app.info":
                     helpers.append(f)
                 case "appid.txt":
+                    helpers.append(f)
+                case "chromaappinfo.xml":
                     helpers.append(f)
                 case _:
                     # not a file we care about
@@ -434,9 +489,12 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
                     fuzzed_exes.add(exe)
                     logging.debug(f"{exe} matched: {m}")
 
-        logging.debug(f"Fuzzed EXEs: {fuzzed_exes}")
+        logging.debug(f"Remove fuzzed EXEs: {fuzzed_exes}")
 
         unpack_exes = [f for f in exes if f not in fuzzed_exes]
+
+        if len(unpack_exes) == 0:
+            raise NoGameException(f"no binaries detected for {game_path}")
 
         logging.debug(f"Files to unpack: {helpers + unpack_exes}")
 
@@ -449,12 +507,57 @@ def detect_7z(game_path: Path) -> SteamGame | NonSteamGame:
                 f.write(bio.read())
 
     game = detect_folder(Path(__file__).parent / ".tmp")
-    logging.info(f"(7z) Detected game: {game}")
+    game.path = game_path
 
     # cleanup tmp again
     if tmp.is_dir():
         shutil.rmtree(tmp)
         logging.debug("Cleaned up `.tmp`")
+
+    if game.name == " tmp" and game.version is None:
+        version = get_game_version(game.path)
+        if version is None:
+            # try to get game from folder name
+            name = get_game_name(game_path, "").replace("7z", "").rstrip()
+            appid = int(get_appid_from_name(name))
+            name = get_name_from_appid(appid)
+            game = SteamGame(
+                name=get_name_from_appid(appid),
+                version=version or "Unknown",
+                description=get_app_description(appid),
+                publisher=None,
+                path=game_path,
+                appid=appid
+            )
+            if appid is None:
+                raise NoGameException(game)
+        if version is not None:
+            game.version = version.strip(".7z")  # v03.03.2020.7z
+            game.name = game.path.name.strip(".7z").replace(version, "").replace(".", " ").rstrip()
+    elif game.version is not None and isinstance(game, NonSteamGame):
+        game.name = get_game_name(game.path, game.version)
+
+    if game.name is not None and isinstance(game, NonSteamGame):
+        # recheck for appid
+        appid = get_appid_from_name(game.name)
+
+    if appid is not None and isinstance(game, NonSteamGame):
+        # make sure everything is correct, game.name may sometimes include "7z". This fixes that
+        # by re checking appid corresponds with game.name
+        game = SteamGame(
+            name=get_name_from_appid(appid),
+            publisher=game.publisher,
+            version=game.version,
+            description=get_app_description(appid),
+            appid=appid,
+            path=game.path
+        )
+
+    if isinstance(game, SteamGame):
+        game.name = get_name_from_appid(game.appid)
+
+    logging.info(f"(7z) Detected game: {game}")
+    return game
 
 
 def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
@@ -479,19 +582,18 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
     if game_appid is None:
         # Check `steam_appid.txt`
         game_appid = check_appid_txt(game_folder)
-        if game_appid is None:
-            # Check for `steam_api.ini`
-            game_appid = check_steam_api_ini(game_folder)
-            if game_appid is None:
-                # Check for `app.info`
-                game_publisher, game_name = check_app_info(game_folder)
-                if game_name is not None:
-                    game_appid = get_appid_from_name(game_name, app_list)
-                    logging.debug(f"Found `app.info` - AppId: {game_appid}")
-        else:
-            logging.debug(f"Found `steam_appid.txt` - AppId: {game_appid}")
-    else:
-        logging.debug(f"Found `steam_emu.ini` - AppId: {game_appid}")
+    if game_appid is None:
+        # Check for `steam_api.ini`
+        game_appid = check_steam_api_ini(game_folder)
+    if game_appid is None:
+        # Check for `app.info`
+        game_publisher, game_name = check_app_info(game_folder)
+    if game_name is None:
+        # Check for `ChromaAppInfo.xml`
+        game_name = check_chroma_app_info_xml(game_folder)
+
+    if game_name is not None:
+        game_appid = get_appid_from_name(game_name, app_list)
 
     if game_appid is None:
         logging.info(
@@ -532,7 +634,7 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
     # More game_version detection. Try with win32 api.
     if len(possible_exes) == 1 and game_version is None:
         # on Windows use win32api to get application version
-        game_version = get_version_number(possible_exes[0])
+        game_version = _get_version_number(possible_exes[0])
         if game_version is None:
             # Try to find game_version in EXE name
             game_version = get_game_version(possible_exes[0], is_folder=False)
@@ -555,7 +657,7 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
                         logging.debug(
                             "Attempting to get version number using win32 api"
                         )
-                        game_version = get_version_number(exe)
+                        game_version = _get_version_number(exe)
 
     if game_version is None:
         # Some games offer `launcher-settings.json` (i.e. Prison Architect)
@@ -570,7 +672,7 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
     logging.info(f"Detected game version: '{game_version or 'Unknown'}'")
     if game_appid is not None:
         game = SteamGame(
-            name=game_name,
+            name=get_name_from_appid(game_appid),
             publisher=game_publisher,
             version=game_version,
             path=game_folder,
@@ -590,13 +692,31 @@ def detect_folder(game_folder: Path) -> SteamGame | NonSteamGame:
 
 def main() -> str:
     # Open a folder select dialog and return Steam appid if game is detected.
-    game_folder = Path(filedialog.askopenfilename(filetypes=[("7-zip Files", ".7z")]))
-    if game_folder == Path("."):
-        print("Nothing selected. Quitting...")
-        sys.exit(0)
-    logging.info(f"Game folder selected: {game_folder.name}")
-    # detect_folder(game_folder)
-    detect_7z(game_folder)
+    prompt = "7zip archive (1), or folder (2)> "
+    choice = input(prompt)
+    while choice not in ("1", "2",):
+        choice = input(prompt)
+
+    if choice == "1":
+        game_path = Path(filedialog.askopenfilename(filetypes=[("7-zip Files", ".7z")]))
+        if game_path == Path("."):
+            print("Nothing selected. Quitting...")
+            sys.exit(0)
+    elif choice == "2":
+        game_path = Path(filedialog.askdirectory())
+        if game_path == Path("."):
+            print("Nothing selected. Quitting...")
+            sys.exit(0)
+
+    logging.info(f"Path selected: {game_path.name}")
+    if game_path.suffix == ".7z":
+        game = detect_7z(game_path)
+    elif game_path.is_dir():
+        game = detect_folder(game_path)
+    else:
+        raise Exception(f"Unexpected path: `{game_path}`")
+
+    print(game)
 
 
 if __name__ == "__main__":

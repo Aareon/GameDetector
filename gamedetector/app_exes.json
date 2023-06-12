@@ -103,6 +103,22 @@
         {
             "filename": "scriptinterpreter.exe",
             "description": "Interpreter for KSP scripts."
+        },
+        {
+            "filename": "binpatch.exe",
+            "description": "Patcher for Dwarf Fortress"
+        },
+        {
+            "filename": "AnnouncementsWindow.exe",
+            "description": "Announcements for Dwarf Fortress"
+        },
+        {
+            "filename": "optipng.exe",
+            "description": "PNG optimizer used by Dwarf Fortress"
+        },
+        {
+            "filename": "SoundCenSeGTK.exe",
+            "description": "Sound engine used by Dwarf Fortress"
         }
     ],
     "fuzz": [
@@ -133,6 +149,7 @@
         "essimporter",
         "iniimporter",
         "unins000",
-        "scriptinterpreter"
+        "scriptinterpreter",
+        "soundsense"
     ]
 }
