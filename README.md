@@ -16,6 +16,8 @@ The purpose of this application is so that it can be used in a much larger appli
 ## Compatibility
 
 Currently, only Windows 10/11 are officially supported, but Debian/Linux support is planned in the future.
+The project uses `pathlib` so handling different paths should be trivial, its just not tested.
+The only known dependency issue is `pywin32`, and there's already a stub for the single function using it for Linux systems to continue using the library.
 
 ## Installing
 
@@ -31,7 +33,8 @@ pipenv install
 
 After installing dependencies, and given that their were no errors in doing so, run the application.
 ```sh
-py ./src/game_detect.py
+cd GameDetector
+py ./gamedetector/game_detect.py
 ```
 
 ## What to expect after running directly
@@ -44,7 +47,7 @@ This program isn't super useful to regular users, but it will be extremely handy
 ```py
 from pathlib import Path
 
-from gamedetector.game_detect import detect_folder, detect_7z, NonSteamGame, SteamGame
+from gamedetector.game_detect import detect_folder, detect_7z, NonSteamGame, SteamGame, NoGameException, SteamApiException
 
 game_path = detect_folder(Path("some path to a game"))  # will return either NonSteamGame, or SteamGame if AppId is found
 game_7z_path = detect_7z(Path("path to 7z file containing game"))  # will return same as above
