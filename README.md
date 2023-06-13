@@ -4,7 +4,7 @@ Detect games, get Steam info, profit. This program allows you to select a folder
 
 The purpose of this application is so that it can be used in a much larger application, an automatic game manager for data hoarders. I'll let you know more about this as I develop it, but believe me, it'll be super rad.
 
-## What this program can and won't do
+## Disclaimer
 
 - Does not circumvent DRM
 - Does not encourage the use of pirated software
@@ -12,6 +12,14 @@ The purpose of this application is so that it can be used in a much larger appli
 - Makes a reasonable attempt to respect ratelimits
 - Caches responses to save bandwidth and API load
 - Does not download or upload game data to any server
+
+## Features
+- Very fast (reading from compressed archives is limited by 7-zip)
+- Folder support
+- 7-zip archive support
+- GOG game support
+- Steam game support
+- DRM-free games support
 
 ## Compatibility
 
