@@ -119,10 +119,75 @@
         {
             "filename": "SoundCenSeGTK.exe",
             "description": "Sound engine used by Dwarf Fortress"
+        },
+        {
+            "filename": "ModOrganizer.exe",
+            "description": "MO2"
+        },
+        {
+            "filename": "nxmhandler.exe",
+            "description": "NexusMods link handler, used by MO2"
+        },
+        {
+            "filename": "QtWebEngineProcess.exe",
+            "description": "Utility for MO2"
+        },
+        {
+            "filename": "Explorer++.exe",
+            "description": "Explorer utility for MO2"
+        },
+        {
+            "filename": "lootcli.exe",
+            "description": "Load Order Organizer Tool, used with MO2"
+        },
+        {
+            "filename": "NexusClientCLI.exe",
+            "description": "CLI client for NexusMods"
+        },
+        {
+            "filename": "Wrye Bash.exe",
+            "description": "Bash patch creator, tool for MO2"
+        },
+        {
+            "filename": "7z.exe",
+            "description": "7z File Compression CLI"
+        },
+        {
+            "filename": "lzma.exe",
+            "description": "File compression CLI"
+        },
+        {
+            "filename": "pngcrush.exe",
+            "description": "PNG optimizer used for Bash patches"
+        },
+        {
+            "filename": "7za.exe",
+            "description": "Distribution of 7z"
+        },
+        {
+            "filename": "NifViewer.exe",
+            "description": "Viewer for NIF files, typically for Bethesda games"
+        },
+        {
+            "filename": "4gb patch.exe",
+            "description": "4GB Patch for Elder Scrolls: Oblivion. Allows more than 4GB of memory to be used."
+        },
+        {
+            "filename": "OblivionModManager.exe",
+            "description": "Mod Manager for Elder Scrolls: Oblivion."
+        },
+        {
+            "filename": "obse_loader.exe",
+            "description": "Similar to SKSE for Skyrim; script loader for Oblivion"
+        },
+        {
+            "filename": "Armok Vision.exe",
+            "description": "Utility for Dwarf Fortress"
         }
     ],
     "fuzz": [
         "vcredist",
+        "install",
         "uninstall",
         "setup",
         "crashreport",
@@ -150,6 +215,9 @@
         "iniimporter",
         "unins000",
         "scriptinterpreter",
-        "soundsense"
+        "soundsense",
+        "usvfs_proxy_",
+        "helper",
+        "SKIDROW"
     ]
 }
